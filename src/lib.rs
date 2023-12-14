@@ -63,6 +63,10 @@ mod fr;
 pub use bls12_381_plus::Scalar as Fq;
 pub use fr::Fr;
 
+pub use group;
+pub use ff;
+pub use bls12_381_plus;
+
 /// Represents an element of the base field $\mathbb{F}_q$ of the Jubjub elliptic curve
 /// construction.
 pub type Base = Fq;
