@@ -17,8 +17,9 @@ edition = "2021"
 version = "1"
 default-features = false
 
-[dependencies.bls12_381]
+[dependencies.bls12_381_plus]
 version = "0.8"
+features = ["groups", "bits", "hashing"]
 default-features = false
 
 [dependencies.ff]
@@ -47,7 +48,7 @@ default-features = false
 
 [features]
 default = ["alloc", "bits"]
-alloc = ["ff/alloc", "group/alloc"]
+alloc = ["ff/alloc", "group/alloc", "bls12_381_plus/alloc"]
 bits = ["ff/bits"]
 
 [[bench]]
