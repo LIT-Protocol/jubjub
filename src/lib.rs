@@ -35,6 +35,7 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
+/// The inner representation types
 use bitvec::{order::Lsb0, view::AsBits};
 use core::borrow::Borrow;
 use core::fmt;
@@ -59,7 +60,7 @@ use group::WnafGroup;
 mod util;
 
 mod fr;
-pub use bls12_381::Scalar as Fq;
+pub use bls12_381_plus::Scalar as Fq;
 pub use fr::Fr;
 
 /// Represents an element of the base field $\mathbb{F}_q$ of the Jubjub elliptic curve
@@ -217,7 +218,7 @@ impl From<AffinePoint> for ExtendedPoint {
         ExtendedPoint {
             u: affine.u,
             v: affine.v,
-            z: Fq::one(),
+            z: Fq::ONE,
             t1: affine.u,
             t2: affine.v,
         }
@@ -262,9 +263,9 @@ impl AffineNielsPoint {
     /// Constructs this point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         AffineNielsPoint {
-            v_plus_u: Fq::one(),
-            v_minus_u: Fq::one(),
-            t2d: Fq::zero(),
+            v_plus_u: Fq::ONE,
+            v_minus_u: Fq::ONE,
+            t2d: Fq::ZERO,
         }
     }
 
@@ -346,10 +347,10 @@ impl ExtendedNielsPoint {
     /// Constructs this point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         ExtendedNielsPoint {
-            v_plus_u: Fq::one(),
-            v_minus_u: Fq::one(),
-            z: Fq::one(),
-            t2d: Fq::zero(),
+            v_plus_u: Fq::ONE,
+            v_minus_u: Fq::ONE,
+            z: Fq::ONE,
+            t2d: Fq::ZERO,
         }
     }
 
@@ -396,7 +397,7 @@ impl<'a, 'b> Mul<&'b Fr> for &'a ExtendedNielsPoint {
 impl_binops_multiplicative_mixed!(ExtendedNielsPoint, Fr, ExtendedPoint);
 
 // `d = -(10240/10241)`
-const EDWARDS_D: Fq = Fq::from_raw([
+const EDWARDS_D: Fq = Fq::from_raw_unchecked([
     0x0106_5fd6_d634_3eb1,
     0x292d_7f6d_3757_9d26,
     0xf5fd_9207_e6bd_7fd4,
@@ -404,7 +405,7 @@ const EDWARDS_D: Fq = Fq::from_raw([
 ]);
 
 // `2*d`
-const EDWARDS_D2: Fq = Fq::from_raw([
+const EDWARDS_D2: Fq = Fq::from_raw_unchecked([
     0x020c_bfad_ac68_7d62,
     0x525a_feda_6eaf_3a4c,
     0xebfb_240f_cd7a_ffa8,
@@ -415,8 +416,8 @@ impl AffinePoint {
     /// Constructs the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         AffinePoint {
-            u: Fq::zero(),
-            v: Fq::one(),
+            u: Fq::ZERO,
+            v: Fq::ONE,
         }
     }
 
@@ -453,8 +454,8 @@ impl AffinePoint {
 
     /// Converts this element into its byte representation.
     pub fn to_bytes(&self) -> [u8; 32] {
-        let mut tmp = self.v.to_bytes();
-        let u = self.u.to_bytes();
+        let mut tmp = self.v.to_le_bytes();
+        let u = self.u.to_le_bytes();
 
         // Encode the sign of the u-coordinate in the most
         // significant bit.
@@ -497,7 +498,7 @@ impl AffinePoint {
         b[31] &= 0b0111_1111;
 
         // Interpret what remains as the v-coordinate
-        Fq::from_bytes(&b).and_then(|v| {
+        Fq::from_le_bytes(&b).and_then(|v| {
             // -u^2 + v^2 = 1 + d.u^2.v^2
             // -u^2 = 1 + d.u^2.v^2 - v^2    (rearrange)
             // -u^2 - d.u^2.v^2 = 1 - v^2    (rearrange)
@@ -511,11 +512,11 @@ impl AffinePoint {
 
             let v2 = v.square();
 
-            ((v2 - Fq::one()) * ((Fq::one() + EDWARDS_D * v2).invert().unwrap_or(Fq::zero())))
+            ((v2 - Fq::ONE) * ((Fq::ONE + EDWARDS_D * v2).invert().unwrap_or(Fq::ZERO)))
                 .sqrt()
                 .and_then(|u| {
                     // Fix the sign of `u` if necessary
-                    let flip_sign = Choice::from((u.to_bytes()[0] ^ sign) & 1);
+                    let flip_sign = Choice::from((u.to_le_bytes()[0] ^ sign) & 1);
                     let u_negated = -u;
                     let final_u = Fq::conditional_select(&u, &u_negated, flip_sign);
 
@@ -524,7 +525,7 @@ impl AffinePoint {
                     // - ZIP 216 is enabled
                     // - u == 0
                     // - flip_sign == true
-                    let u_is_zero = u.ct_eq(&Fq::zero());
+                    let u_is_zero = u.ct_eq(&Fq::ZERO);
                     CtOption::new(
                         AffinePoint { u: final_u, v },
                         !(zip_216_enabled & u_is_zero & flip_sign),
@@ -569,7 +570,7 @@ impl AffinePoint {
                 b[31] &= 0b0111_1111;
 
                 // Interpret what remains as the v-coordinate
-                Fq::from_bytes(&b).map(|v| {
+                Fq::from_le_bytes(&b).map(|v| {
                     // -u^2 + v^2 = 1 + d.u^2.v^2
                     // -u^2 = 1 + d.u^2.v^2 - v^2    (rearrange)
                     // -u^2 - d.u^2.v^2 = 1 - v^2    (rearrange)
@@ -586,8 +587,8 @@ impl AffinePoint {
                     Item {
                         v,
                         sign,
-                        numerator: (v2 - Fq::one()),
-                        denominator: Fq::one() + EDWARDS_D * v2,
+                        numerator: (v2 - Fq::ONE),
+                        denominator: Fq::ONE + EDWARDS_D * v2,
                     }
                 })
             })
@@ -595,7 +596,7 @@ impl AffinePoint {
 
         let mut denominators: Vec<_> = items
             .iter()
-            .map(|item| item.map(|item| item.denominator).unwrap_or(Fq::zero()))
+            .map(|item| item.map(|item| item.denominator).unwrap_or(Fq::ZERO))
             .collect();
         denominators.iter_mut().batch_invert();
 
@@ -609,7 +610,7 @@ impl AffinePoint {
                      }| {
                         (numerator * inv_denominator).sqrt().and_then(|u| {
                             // Fix the sign of `u` if necessary
-                            let flip_sign = Choice::from((u.to_bytes()[0] ^ sign) & 1);
+                            let flip_sign = Choice::from((u.to_le_bytes()[0] ^ sign) & 1);
                             let u_negated = -u;
                             let final_u = Fq::conditional_select(&u, &u_negated, flip_sign);
 
@@ -617,7 +618,7 @@ impl AffinePoint {
                             // encoding as non-canonical if all of the following occur:
                             // - u == 0
                             // - flip_sign == true
-                            let u_is_zero = u.ct_eq(&Fq::zero());
+                            let u_is_zero = u.ct_eq(&Fq::ZERO);
                             CtOption::new(AffinePoint { u: final_u, v }, !(u_is_zero & flip_sign))
                         })
                     },
@@ -641,7 +642,7 @@ impl AffinePoint {
         ExtendedPoint {
             u: self.u,
             v: self.v,
-            z: Fq::one(),
+            z: Fq::ONE,
             t1: self.u,
             t2: self.v,
         }
@@ -671,7 +672,7 @@ impl AffinePoint {
         let u2 = self.u.square();
         let v2 = self.v.square();
 
-        v2 - u2 == Fq::one() + EDWARDS_D * u2 * v2
+        v2 - u2 == Fq::ONE + EDWARDS_D * u2 * v2
     }
 }
 
@@ -679,11 +680,11 @@ impl ExtendedPoint {
     /// Constructs an extended point from the neutral element `(0, 1)`.
     pub const fn identity() -> Self {
         ExtendedPoint {
-            u: Fq::zero(),
-            v: Fq::one(),
-            z: Fq::one(),
-            t1: Fq::zero(),
-            t2: Fq::zero(),
+            u: Fq::ZERO,
+            v: Fq::ONE,
+            z: Fq::ONE,
+            t1: Fq::ZERO,
+            t2: Fq::ZERO,
         }
     }
 
@@ -692,7 +693,7 @@ impl ExtendedPoint {
         // If this point is the identity, then
         //     u = 0 * z = 0
         // and v = 1 * z = z
-        self.u.ct_eq(&Fq::zero()) & self.v.ct_eq(&self.z)
+        self.u.ct_eq(&Fq::ZERO) & self.v.ct_eq(&self.z)
     }
 
     /// Determines if this point is of small order.
@@ -701,7 +702,7 @@ impl ExtendedPoint {
         // points are (0, 1) and (0, -1), and so we only need to check
         // that the u-coordinate of the result is zero to see if the
         // point is small order.
-        self.double().double().u.ct_eq(&Fq::zero())
+        self.double().double().u.ct_eq(&Fq::ZERO)
     }
 
     /// Determines if this point is torsion free and so is contained
@@ -864,7 +865,7 @@ impl ExtendedPoint {
     fn is_on_curve_vartime(&self) -> bool {
         let affine = AffinePoint::from(*self);
 
-        self.z != Fq::zero()
+        self.z != Fq::ZERO
             && affine.is_on_curve_vartime()
             && (affine.u * affine.v * self.z == self.t1 * self.t2)
     }
@@ -1092,7 +1093,7 @@ pub fn batch_normalize(v: &mut [ExtendedPoint]) -> impl Iterator<Item = AffinePo
         // Set the coordinates to the correct value
         q.u *= &tmp; // Multiply by 1/z
         q.v *= &tmp; // Multiply by 1/z
-        q.z = Fq::one(); // z-coordinate is now one
+        q.z = Fq::ONE; // z-coordinate is now one
         q.t1 = q.u;
         q.t2 = q.v;
 
@@ -1248,8 +1249,8 @@ impl Group for ExtendedPoint {
 
             // See AffinePoint::from_bytes for details.
             let v2 = v.square();
-            let p = ((v2 - Fq::one())
-                * ((Fq::one() + EDWARDS_D * v2).invert().unwrap_or(Fq::zero())))
+            let p = ((v2 - Fq::ONE)
+                * ((Fq::ONE + EDWARDS_D * v2).invert().unwrap_or(Fq::ZERO)))
             .sqrt()
             .map(|u| AffinePoint {
                 u: if flip_sign { -u } else { u },
@@ -1380,13 +1381,13 @@ impl CofactorCurveAffine for AffinePoint {
     fn generator() -> Self {
         // The point with the lowest positive v-coordinate and positive u-coordinate.
         AffinePoint {
-            u: Fq::from_raw([
+            u: Fq::from_raw_unchecked([
                 0xe4b3_d35d_f1a7_adfe,
                 0xcaf5_5d1b_29bf_81af,
                 0x8b0f_03dd_d60a_8187,
                 0x62ed_cbb8_bf37_87c8,
             ]),
-            v: Fq::from_raw([
+            v: Fq::from_raw_unchecked([
                 0x0000_0000_0000_000b,
                 0x0000_0000_0000_0000,
                 0x0000_0000_0000_0000,
@@ -1504,13 +1505,13 @@ fn test_extended_niels_point_identity() {
 #[test]
 fn test_assoc() {
     let p = ExtendedPoint::from(AffinePoint {
-        u: Fq::from_raw([
+        u: Fq::from_raw_unchecked([
             0x81c5_71e5_d883_cfb0,
             0x049f_7a68_6f14_7029,
             0xf539_c860_bc3e_a21f,
             0x4284_715b_7ccc_8162,
         ]),
-        v: Fq::from_raw([
+        v: Fq::from_raw_unchecked([
             0xbf09_6275_684b_b8ca,
             0xc7ba_2458_90af_256d,
             0x5911_9f3e_8638_0eb0,
@@ -1529,13 +1530,13 @@ fn test_assoc() {
 #[test]
 fn test_batch_normalize() {
     let mut p = ExtendedPoint::from(AffinePoint {
-        u: Fq::from_raw([
+        u: Fq::from_raw_unchecked([
             0x81c5_71e5_d883_cfb0,
             0x049f_7a68_6f14_7029,
             0xf539_c860_bc3e_a21f,
             0x4284_715b_7ccc_8162,
         ]),
-        v: Fq::from_raw([
+        v: Fq::from_raw_unchecked([
             0xbf09_6275_684b_b8ca,
             0xc7ba_2458_90af_256d,
             0x5911_9f3e_8638_0eb0,
@@ -1576,25 +1577,25 @@ fn test_batch_normalize() {
 
 #[cfg(test)]
 const FULL_GENERATOR: AffinePoint = AffinePoint::from_raw_unchecked(
-    Fq::from_raw([
+    Fq::from_raw_unchecked([
         0xe4b3_d35d_f1a7_adfe,
         0xcaf5_5d1b_29bf_81af,
         0x8b0f_03dd_d60a_8187,
         0x62ed_cbb8_bf37_87c8,
     ]),
-    Fq::from_raw([0xb, 0x0, 0x0, 0x0]),
+    Fq::from_raw_unchecked([0xb, 0x0, 0x0, 0x0]),
 );
 
 #[cfg(test)]
 const EIGHT_TORSION: [AffinePoint; 8] = [
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0xd92e_6a79_2720_0d43,
             0x7aa4_1ac4_3dae_8582,
             0xeaaa_e086_a166_18d1,
             0x71d4_df38_ba9e_7973,
         ]),
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0xff0d_2068_eff4_96dd,
             0x9106_ee90_f384_a4a1,
             0x16a1_3035_ad4d_7266,
@@ -1602,22 +1603,22 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0xfffe_ffff_0000_0001,
             0x67ba_a400_89fb_5bfe,
             0xa5e8_0b39_939e_d334,
             0x73ed_a753_299d_7d47,
         ]),
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
+        Fq::from_raw_unchecked([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0xd92e_6a79_2720_0d43,
             0x7aa4_1ac4_3dae_8582,
             0xeaaa_e086_a166_18d1,
             0x71d4_df38_ba9e_7973,
         ]),
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0x00f2_df96_100b_6924,
             0xc2b6_b572_0c79_b75d,
             0x1c98_a7d2_5c54_659e,
@@ -1625,8 +1626,8 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
-        Fq::from_raw([
+        Fq::from_raw_unchecked([0x0, 0x0, 0x0, 0x0]),
+        Fq::from_raw_unchecked([
             0xffff_ffff_0000_0000,
             0x53bd_a402_fffe_5bfe,
             0x3339_d808_09a1_d805,
@@ -1634,13 +1635,13 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0x26d1_9585_d8df_f2be,
             0xd919_893e_c24f_d67c,
             0x488e_f781_683b_bf33,
             0x0218_c81a_6eff_03d4,
         ]),
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0x00f2_df96_100b_6924,
             0xc2b6_b572_0c79_b75d,
             0x1c98_a7d2_5c54_659e,
@@ -1648,22 +1649,22 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0x0001_0000_0000_0000,
             0xec03_0002_7603_0000,
             0x8d51_ccce_7603_04d0,
             0x0,
         ]),
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
+        Fq::from_raw_unchecked([0x0, 0x0, 0x0, 0x0]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0x26d1_9585_d8df_f2be,
             0xd919_893e_c24f_d67c,
             0x488e_f781_683b_bf33,
             0x0218_c81a_6eff_03d4,
         ]),
-        Fq::from_raw([
+        Fq::from_raw_unchecked([
             0xff0d_2068_eff4_96dd,
             0x9106_ee90_f384_a4a1,
             0x16a1_3035_ad4d_7266,
@@ -1671,8 +1672,8 @@ const EIGHT_TORSION: [AffinePoint; 8] = [
         ]),
     ),
     AffinePoint::from_raw_unchecked(
-        Fq::from_raw([0x0, 0x0, 0x0, 0x0]),
-        Fq::from_raw([0x1, 0x0, 0x0, 0x0]),
+        Fq::from_raw_unchecked([0x0, 0x0, 0x0, 0x0]),
+        Fq::from_raw_unchecked([0x1, 0x0, 0x0, 0x0]),
     ),
 ];
 
@@ -1775,13 +1776,13 @@ fn test_mul_consistency() {
     ]);
     assert_eq!(a * b, c);
     let p = ExtendedPoint::from(AffinePoint {
-        u: Fq::from_raw([
+        u: Fq::from_raw_unchecked([
             0x81c5_71e5_d883_cfb0,
             0x049f_7a68_6f14_7029,
             0xf539_c860_bc3e_a21f,
             0x4284_715b_7ccc_8162,
         ]),
-        v: Fq::from_raw([
+        v: Fq::from_raw_unchecked([
             0xbf09_6275_684b_b8ca,
             0xc7ba_2458_90af_256d,
             0x5911_9f3e_8638_0eb0,
