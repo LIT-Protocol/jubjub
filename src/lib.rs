@@ -1160,9 +1160,6 @@ impl SubgroupPoint {
 
     /// The identity of the prime-order subgroup.
     pub const IDENTITY: Self = SubgroupPoint(ExtendedPoint::IDENTITY);
-
-    /// The generator of the prime-order subgroup
-    pub const GENERATOR: Self = SubgroupPoint(ExtendedPoint::GENERATOR);
 }
 
 impl<T> Sum<T> for SubgroupPoint
