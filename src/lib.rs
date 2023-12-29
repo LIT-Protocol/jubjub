@@ -31,7 +31,7 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "std"))]
 #[macro_use]
 extern crate std;
 
@@ -63,9 +63,9 @@ mod fr;
 pub use bls12_381_plus::Scalar as Fq;
 pub use fr::Fr;
 
-pub use group;
-pub use ff;
 pub use bls12_381_plus;
+pub use ff;
+pub use group;
 
 /// Represents an element of the base field $\mathbb{F}_q$ of the Jubjub elliptic curve
 /// construction.
@@ -418,12 +418,10 @@ const EDWARDS_D2: Fq = Fq::from_raw_unchecked([
 
 impl AffinePoint {
     /// Constructs the neutral element `(0, 1)`.
-    pub const fn identity() -> Self {
-        AffinePoint {
-            u: Fq::ZERO,
-            v: Fq::ONE,
-        }
-    }
+    pub const IDENTITY: Self = Self {
+        u: Fq::ZERO,
+        v: Fq::ONE,
+    };
 
     /// Determines if this point is the identity.
     pub fn is_identity(&self) -> Choice {
@@ -682,15 +680,13 @@ impl AffinePoint {
 
 impl ExtendedPoint {
     /// Constructs an extended point from the neutral element `(0, 1)`.
-    pub const fn identity() -> Self {
-        ExtendedPoint {
-            u: Fq::ZERO,
-            v: Fq::ONE,
-            z: Fq::ONE,
-            t1: Fq::ZERO,
-            t2: Fq::ZERO,
-        }
-    }
+    pub const IDENTITY: Self = Self {
+        u: Fq::ZERO,
+        v: Fq::ONE,
+        z: Fq::ONE,
+        t1: Fq::ZERO,
+        t2: Fq::ZERO,
+    };
 
     /// Determines if this point is the identity.
     pub fn is_identity(&self) -> Choice {
@@ -1161,6 +1157,12 @@ impl SubgroupPoint {
     pub const fn from_raw_unchecked(u: Fq, v: Fq) -> Self {
         SubgroupPoint(AffinePoint::from_raw_unchecked(u, v).to_extended())
     }
+
+    /// The identity of the prime-order subgroup.
+    pub const IDENTITY: Self = SubgroupPoint(ExtendedPoint::IDENTITY);
+
+    /// The generator of the prime-order subgroup
+    pub const GENERATOR: Self = SubgroupPoint(ExtendedPoint::GENERATOR);
 }
 
 impl<T> Sum<T> for SubgroupPoint
@@ -1253,13 +1255,12 @@ impl Group for ExtendedPoint {
 
             // See AffinePoint::from_bytes for details.
             let v2 = v.square();
-            let p = ((v2 - Fq::ONE)
-                * ((Fq::ONE + EDWARDS_D * v2).invert().unwrap_or(Fq::ZERO)))
-            .sqrt()
-            .map(|u| AffinePoint {
-                u: if flip_sign { -u } else { u },
-                v,
-            });
+            let p = ((v2 - Fq::ONE) * ((Fq::ONE + EDWARDS_D * v2).invert().unwrap_or(Fq::ZERO)))
+                .sqrt()
+                .map(|u| AffinePoint {
+                    u: if flip_sign { -u } else { u },
+                    v,
+                });
 
             if p.is_some().into() {
                 let p = p.unwrap().to_curve();
@@ -1272,7 +1273,7 @@ impl Group for ExtendedPoint {
     }
 
     fn identity() -> Self {
-        Self::identity()
+        Self::IDENTITY
     }
 
     fn generator() -> Self {
@@ -1303,7 +1304,7 @@ impl Group for SubgroupPoint {
     }
 
     fn identity() -> Self {
-        SubgroupPoint(ExtendedPoint::identity())
+        SubgroupPoint::IDENTITY
     }
 
     fn generator() -> Self {
@@ -1379,7 +1380,7 @@ impl CofactorCurveAffine for AffinePoint {
     type Curve = ExtendedPoint;
 
     fn identity() -> Self {
-        Self::identity()
+        Self::IDENTITY
     }
 
     fn generator() -> Self {
@@ -1936,5 +1937,15 @@ fn test_zip_216() {
             encoded[31] |= 0b1000_0000;
             assert_eq!(b, &encoded);
         }
+    }
+}
+
+#[test]
+fn test_double() {
+    use rand_core::SeedableRng;
+    let mut rng = XorShiftRng::from_seed([7u8; 16]);
+    for _ in 0..25 {
+        let a = ExtendedPoint::random(&mut rng);
+        assert_eq!(a + a, a.double());
     }
 }
