@@ -713,8 +713,14 @@ impl Field for Fr {
 impl PrimeField for Fr {
     type Repr = [u8; 32];
 
-    fn from_repr(r: Self::Repr) -> CtOption<Self> {
-        Self::from_bytes(&r)
+    fn from_repr(mut r: Self::Repr) -> CtOption<Self> {
+        Self::from_bytes(&r).or_else(|| {
+            r.reverse();
+            let mut bytes = [0u8; 64];
+            bytes[..32].copy_from_slice(&r);
+            let s = Self::from_bytes_wide(&bytes);
+            CtOption::new(s, !s.is_zero())
+        })
     }
 
     fn to_repr(&self) -> Self::Repr {
