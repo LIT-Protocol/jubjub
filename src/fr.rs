@@ -663,6 +663,19 @@ impl Fr {
 
         Fr([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
     }
+
+    /// Hash data to a scalar
+    pub fn hash<X>(msg: &[u8], dst: &[u8]) -> Self
+        where X: for<'a> elliptic_curve::hash2curve::ExpandMsg<'a>
+    {
+        use elliptic_curve::hash2curve::Expander;
+        let dst = [dst];
+        let msg = [msg];
+        let mut expander = X::expand_message(&msg, &dst, 64).expect("hash_to_scalar failed");
+        let mut buf = [0u8; 64];
+        expander.fill_bytes(&mut buf);
+        Fr::from_bytes_wide(&buf)
+    }
 }
 
 impl From<Fr> for [u8; 32] {
