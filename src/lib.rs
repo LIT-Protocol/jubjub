@@ -64,6 +64,7 @@ pub use bls12_381_plus::Scalar as Fq;
 pub use fr::Fr;
 
 pub use bls12_381_plus;
+use elliptic_curve::hash2curve::Expander;
 pub use ff;
 pub use group;
 
@@ -868,6 +869,22 @@ impl ExtendedPoint {
         self.z != Fq::ZERO
             && affine.is_on_curve_vartime()
             && (affine.u * affine.v * self.z == self.t1 * self.t2)
+    }
+
+    /// Hash the input to a point.
+    pub fn hash<X>(msg: &[u8], dst: &[u8]) -> Self
+    where X: for<'a> elliptic_curve::hash2curve::ExpandMsg<'a>
+    {
+        use rand_core::SeedableRng;
+
+        let dst = [dst];
+        let msg = [msg];
+        let mut h = X::expand_message(&msg, &dst, 32).expect("hash to curve failed");
+        let mut seed = [0u8; 32];
+        h.fill_bytes(&mut seed);
+        let rng = rand_chacha::ChaChaRng::from_seed(seed);
+        // NOTE: This is not constant time but should be more efficient that hunt-and-peck
+        Self::random(rng)
     }
 }
 
@@ -1940,7 +1957,7 @@ fn test_zip_216() {
 #[test]
 fn test_double() {
     use rand_core::SeedableRng;
-    let mut rng = XorShiftRng::from_seed([7u8; 16]);
+    let mut rng = rand_xorshift::XorShiftRng::from_seed([7u8; 16]);
     for _ in 0..25 {
         let a = ExtendedPoint::random(&mut rng);
         assert_eq!(a + a, a.double());
