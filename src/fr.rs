@@ -666,7 +666,8 @@ impl Fr {
 
     /// Hash data to a scalar
     pub fn hash<X>(msg: &[u8], dst: &[u8]) -> Self
-        where X: for<'a> elliptic_curve::hash2curve::ExpandMsg<'a>
+    where
+        X: for<'a> elliptic_curve::hash2curve::ExpandMsg<'a>,
     {
         use elliptic_curve::hash2curve::Expander;
         let dst = [dst];
