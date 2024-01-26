@@ -48,10 +48,8 @@ use group::{
     Curve, Group, GroupEncoding,
 };
 use rand_core::RngCore;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
-use serde::{Deserialize, Serialize};
-
-
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -144,13 +142,39 @@ impl ConditionallySelectable for AffinePoint {
 /// * Add it to an `ExtendedPoint`, `AffineNielsPoint` or `ExtendedNielsPoint`.
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
-#[derive(Clone, Copy, Debug, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct ExtendedPoint {
     u: Fq,
     v: Fq,
     z: Fq,
     t1: Fq,
     t2: Fq,
+}
+
+impl Serialize for ExtendedPoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let bytes = self.to_bytes();
+        bytes.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ExtendedPoint {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = <[u8; 32]>::deserialize(deserializer)?;
+
+        let extended_point = ExtendedPoint::from_bytes(&bytes);
+        if extended_point.is_some().into() {
+            Ok(extended_point.unwrap())
+        } else {
+            Err(de::Error::custom("Invalid jubjub::ExtendedPoint"))
+        }
+    }
 }
 
 impl fmt::Display for ExtendedPoint {
@@ -876,7 +900,8 @@ impl ExtendedPoint {
 
     /// Hash the input to a point.
     pub fn hash<X>(msg: &[u8], dst: &[u8]) -> Self
-    where X: for<'a> elliptic_curve::hash2curve::ExpandMsg<'a>
+    where
+        X: for<'a> elliptic_curve::hash2curve::ExpandMsg<'a>,
     {
         use rand_core::SeedableRng;
 
