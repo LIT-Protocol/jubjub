@@ -49,6 +49,9 @@ use group::{
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+use serde::{Deserialize, Serialize};
+
+
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -141,7 +144,7 @@ impl ConditionallySelectable for AffinePoint {
 /// * Add it to an `ExtendedPoint`, `AffineNielsPoint` or `ExtendedNielsPoint`.
 /// * Double it using `double()`.
 /// * Compare it with another extended point using `PartialEq` or `ct_eq()`.
-#[derive(Clone, Copy, Debug, Eq)]
+#[derive(Clone, Copy, Debug, Eq, Serialize, Deserialize)]
 pub struct ExtendedPoint {
     u: Fq,
     v: Fq,
