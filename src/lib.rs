@@ -48,8 +48,10 @@ use group::{
     Curve, Group, GroupEncoding,
 };
 use rand_core::RngCore;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -151,16 +153,18 @@ pub struct ExtendedPoint {
     t2: Fq,
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for ExtendedPoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let bytes = self.to_bytes();
+        let bytes = self.u.to_be_bytes();
         bytes.serialize(serializer)
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for ExtendedPoint {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -169,11 +173,10 @@ impl<'de> Deserialize<'de> for ExtendedPoint {
         let bytes = <[u8; 32]>::deserialize(deserializer)?;
 
         let extended_point = ExtendedPoint::from_bytes(&bytes);
-        if extended_point.is_some().into() {
-            Ok(extended_point.unwrap())
-        } else {
-            Err(de::Error::custom("Invalid jubjub::ExtendedPoint"))
-        }
+
+        Option::<ExtendedPoint>::from(extended_point)
+            .ok_or_else(|| serde::de::Error::custom("invalid point"))
+
     }
 }
 
