@@ -10,11 +10,11 @@ homepage = "https://github.com/zkcrypto/jubjub"
 license = "MIT/Apache-2.0"
 name = "jubjub"
 repository = "https://github.com/zkcrypto/jubjub"
-version = "0.10.2"
+version = "0.10.3"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0", default-features = false, optional = false }
+serde = "1.0"
 
 [dependencies.bitvec]
 version = "1"
@@ -62,6 +62,7 @@ default = ["std", "bits"]
 std = ["alloc", "bits", "bls12_381_plus/std"]
 alloc = ["ff/alloc", "group/alloc", "bls12_381_plus/alloc"]
 bits = ["ff/bits"]
+serde = ["serde"]
 
 [[bench]]
 name = "fq_bench"
