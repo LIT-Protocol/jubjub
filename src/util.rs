@@ -172,3 +172,54 @@ macro_rules! impl_binops_multiplicative {
         }
     };
 }
+
+macro_rules! impl_serde {
+    ($name:ident) => {
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $name {
+            fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let mut bytes = self.to_bytes();
+                if s.is_human_readable() {
+                    let mut hexits = [0u8; 64];
+                    bytes.reverse();
+                    hex::encode_to_slice(&bytes, &mut hexits).expect("sufficient hexits");
+                    let tt = unsafe { core::str::from_utf8_unchecked(&hexits) };
+                    tt.serialize(s)
+                } else {
+                    use serde::ser::SerializeTuple;
+
+                    let mut t = s.serialize_tuple(bytes.len())?;
+                    for b in &bytes {
+                        t.serialize_element(b)?;
+                    }
+                    t.end()
+                }
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de> serde::Deserialize<'de> for $name {
+            fn deserialize<D>(d: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                if d.is_human_readable() {
+                    let ss = <&str>::deserialize(d)?;
+                    let mut bytes = [0u8; 32];
+                    hex::decode_to_slice(ss.as_bytes(), &mut bytes)
+                        .map_err(|_| serde::de::Error::custom("invalid hex string"))?;
+                    bytes.reverse();
+                    Option::from(Self::from_bytes(&bytes))
+                        .ok_or(serde::de::Error::custom("invalid point"))
+                } else {
+                    let bytes = <[u8; 32]>::deserialize(d)?;
+                    Option::from(Self::from_bytes(&bytes))
+                        .ok_or(serde::de::Error::custom("invalid point"))
+                }
+            }
+        }
+    };
+}
