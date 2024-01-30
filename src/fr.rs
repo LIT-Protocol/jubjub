@@ -804,6 +804,8 @@ impl PrimeFieldBits for Fr {
     }
 }
 
+impl_serde!(Fr);
+
 #[test]
 fn test_constants() {
     assert_eq!(

@@ -21,7 +21,6 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
-#![deny(unsafe_code)]
 // This lint is described at
 // https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_arithmetic_impl
 // In our library, some of the arithmetic will necessarily involve various binary
@@ -49,9 +48,6 @@ use group::{
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
-
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -151,33 +147,6 @@ pub struct ExtendedPoint {
     z: Fq,
     t1: Fq,
     t2: Fq,
-}
-
-#[cfg(feature = "serde")]
-impl Serialize for ExtendedPoint {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let bytes = self.u.to_be_bytes();
-        bytes.serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for ExtendedPoint {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let bytes = <[u8; 32]>::deserialize(deserializer)?;
-
-        let extended_point = ExtendedPoint::from_bytes(&bytes);
-
-        Option::<ExtendedPoint>::from(extended_point)
-            .ok_or_else(|| serde::de::Error::custom("invalid point"))
-
-    }
 }
 
 impl fmt::Display for ExtendedPoint {
@@ -500,8 +469,8 @@ impl AffinePoint {
     /// Attempts to interpret a byte representation of an
     /// affine point, failing if the element is not on
     /// the curve or non-canonical.
-    pub fn from_bytes(b: [u8; 32]) -> CtOption<Self> {
-        Self::from_bytes_inner(b, 1.into())
+    pub fn from_bytes(b: &[u8; 32]) -> CtOption<Self> {
+        Self::from_bytes_inner(*b, 1.into())
     }
 
     /// Attempts to interpret a byte representation of an affine point, failing if the
@@ -1182,6 +1151,18 @@ impl<'a> From<&'a SubgroupPoint> for &'a ExtendedPoint {
     }
 }
 
+impl From<ExtendedPoint> for SubgroupPoint {
+    fn from(value: ExtendedPoint) -> Self {
+        value.clear_cofactor()
+    }
+}
+
+impl From<&ExtendedPoint> for SubgroupPoint {
+    fn from(value: &ExtendedPoint) -> Self {
+        value.clear_cofactor()
+    }
+}
+
 impl fmt::Display for SubgroupPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -1459,12 +1440,12 @@ impl GroupEncoding for ExtendedPoint {
     type Repr = [u8; 32];
 
     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-        AffinePoint::from_bytes(*bytes).map(Self::from)
+        AffinePoint::from_bytes(bytes).map(Self::from)
     }
 
     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
         // We can't avoid curve checks when parsing a compressed encoding.
-        AffinePoint::from_bytes(*bytes).map(Self::from)
+        AffinePoint::from_bytes(bytes).map(Self::from)
     }
 
     fn to_bytes(&self) -> Self::Repr {
@@ -1492,17 +1473,21 @@ impl GroupEncoding for AffinePoint {
     type Repr = [u8; 32];
 
     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-        Self::from_bytes(*bytes)
+        Self::from_bytes(bytes)
     }
 
     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
-        Self::from_bytes(*bytes)
+        Self::from_bytes(bytes)
     }
 
     fn to_bytes(&self) -> Self::Repr {
         self.to_bytes()
     }
 }
+
+impl_serde!(AffinePoint);
+impl_serde!(ExtendedPoint);
+impl_serde!(SubgroupPoint);
 
 #[test]
 fn test_is_on_curve_var() {
@@ -1750,7 +1735,7 @@ fn find_eight_torsion() {
 fn find_curve_generator() {
     let mut trial_bytes = [0; 32];
     for _ in 0..255 {
-        let a = AffinePoint::from_bytes(trial_bytes);
+        let a = AffinePoint::from_bytes(&trial_bytes);
         if bool::from(a.is_some()) {
             let a = a.unwrap();
             assert!(a.is_on_curve_vartime());
@@ -1932,7 +1917,7 @@ fn test_serialization_consistency() {
         assert!(p.is_on_curve_vartime());
         let affine = AffinePoint::from(p);
         let serialized = affine.to_bytes();
-        let deserialized = AffinePoint::from_bytes(serialized).unwrap();
+        let deserialized = AffinePoint::from_bytes(&serialized).unwrap();
         assert_eq!(affine, deserialized);
         assert_eq!(affine, batch_deserialized.unwrap());
         assert_eq!(expected_serialized, serialized);
@@ -1962,12 +1947,12 @@ fn test_zip_216() {
             let mut encoding = *b;
 
             // The normal API should reject the non-canonical encoding.
-            assert!(bool::from(AffinePoint::from_bytes(encoding).is_none()));
+            assert!(bool::from(AffinePoint::from_bytes(&encoding).is_none()));
 
             // If we clear the sign bit of the non-canonical encoding, it should be
             // accepted by the normal API.
             encoding[31] &= 0b0111_1111;
-            assert!(bool::from(AffinePoint::from_bytes(encoding).is_some()));
+            assert!(bool::from(AffinePoint::from_bytes(&encoding).is_some()));
         }
 
         {
@@ -1993,4 +1978,30 @@ fn test_double() {
         let a = ExtendedPoint::random(&mut rng);
         assert_eq!(a + a, a.double());
     }
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_serde() {
+    use rand_core::SeedableRng;
+
+    let mut rng = rand_chacha::ChaChaRng::from_seed([13u8; 32]);
+    let secret = Fr::random(&mut rng);
+    let public = SubgroupPoint::generator() * secret;
+
+    let res = serde_json::to_string(&public);
+    assert!(res.is_ok());
+    let json = res.unwrap();
+    let res = serde_json::from_str::<SubgroupPoint>(&json);
+    assert!(res.is_ok());
+    let public2 = res.unwrap();
+    assert_eq!(public, public2);
+
+    let res = serde_bare::to_vec(&public);
+    assert!(res.is_ok());
+    let bare = res.unwrap();
+    let res = serde_bare::from_slice::<SubgroupPoint>(&bare);
+    assert!(res.is_ok());
+    let public2 = res.unwrap();
+    assert_eq!(public, public2);
 }
