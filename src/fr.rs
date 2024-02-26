@@ -9,7 +9,7 @@ use elliptic_curve::bigint::Encoding;
 use elliptic_curve::generic_array::GenericArray;
 use elliptic_curve::{
     bigint::{U256, U384, U512},
-    generic_array::typenum::U48,
+    generic_array::typenum::{U32, U48, U64},
     hash2curve::FromOkm,
     ops::Reduce,
 };
@@ -825,7 +825,7 @@ impl FromOkm for Fr {
 }
 
 impl Reduce<U256> for Fr {
-    type Bytes = [u8; 32];
+    type Bytes = GenericArray<u8, U32>;
 
     fn reduce(other: U256) -> Self {
         let mut bytes = [0u8; 64];
@@ -839,7 +839,7 @@ impl Reduce<U256> for Fr {
 }
 
 impl Reduce<U384> for Fr {
-    type Bytes = [u8; 48];
+    type Bytes = GenericArray<u8, U48>;
 
     fn reduce(other: U384) -> Self {
         let mut bytes = [0u8; 64];
@@ -853,7 +853,7 @@ impl Reduce<U384> for Fr {
 }
 
 impl Reduce<U512> for Fr {
-    type Bytes = [u8; 64];
+    type Bytes = GenericArray<u8, U64>;
 
     fn reduce(other: U512) -> Self {
         let bytes = other.to_le_bytes();
