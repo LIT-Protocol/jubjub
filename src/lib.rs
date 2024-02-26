@@ -40,6 +40,7 @@ use core::borrow::Borrow;
 use core::fmt;
 use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use elliptic_curve::hash2curve::Expander;
 use ff::{BatchInverter, Field};
 use group::{
     cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
@@ -63,7 +64,6 @@ pub use bls12_381_plus::Scalar as Fq;
 pub use fr::Fr;
 
 pub use bls12_381_plus;
-use elliptic_curve::hash2curve::Expander;
 pub use ff;
 pub use group;
 

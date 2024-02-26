@@ -5,6 +5,14 @@ use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use elliptic_curve::bigint::Encoding;
+use elliptic_curve::generic_array::GenericArray;
+use elliptic_curve::{
+    bigint::{U256, U384, U512},
+    generic_array::typenum::U48,
+    hash2curve::FromOkm,
+    ops::Reduce,
+};
 use ff::{Field, PrimeField};
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -805,6 +813,57 @@ impl PrimeFieldBits for Fr {
 }
 
 impl_serde!(Fr);
+
+impl FromOkm for Fr {
+    type Length = U48;
+
+    fn from_okm(okm: &GenericArray<u8, Self::Length>) -> Self {
+        let mut buf = [0u8; 64];
+        buf[16..].copy_from_slice(okm);
+        Self::from_bytes_wide(&buf)
+    }
+}
+
+impl Reduce<U256> for Fr {
+    type Bytes = [u8; 32];
+
+    fn reduce(other: U256) -> Self {
+        let mut bytes = [0u8; 64];
+        bytes[..32].copy_from_slice(&other.to_le_bytes());
+        Fr::from_bytes_wide(&bytes)
+    }
+
+    fn reduce_bytes(bytes: &Self::Bytes) -> Self {
+        Self::reduce(U256::from_le_slice(bytes))
+    }
+}
+
+impl Reduce<U384> for Fr {
+    type Bytes = [u8; 48];
+
+    fn reduce(other: U384) -> Self {
+        let mut bytes = [0u8; 64];
+        bytes[..48].copy_from_slice(&other.to_le_bytes());
+        Fr::from_bytes_wide(&bytes)
+    }
+
+    fn reduce_bytes(bytes: &Self::Bytes) -> Self {
+        Self::reduce(U384::from_le_slice(bytes))
+    }
+}
+
+impl Reduce<U512> for Fr {
+    type Bytes = [u8; 64];
+
+    fn reduce(other: U512) -> Self {
+        let bytes = other.to_le_bytes();
+        Fr::from_bytes_wide(&bytes)
+    }
+
+    fn reduce_bytes(bytes: &Self::Bytes) -> Self {
+        Self::reduce(U512::from_le_slice(bytes))
+    }
+}
 
 #[test]
 fn test_constants() {
