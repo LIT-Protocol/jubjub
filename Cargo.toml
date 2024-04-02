@@ -24,7 +24,7 @@ default-features = false
 
 [dependencies.bls12_381_plus]
 version = "0.8"
-features = ["groups", "bits", "hashing"]
+features = ["groups", "bits"]
 default-features = false
 
 [dependencies.elliptic-curve]
