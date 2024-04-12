@@ -23,9 +23,7 @@ version = "1"
 default-features = false
 
 [dependencies.bls12_381_plus]
-version = "0.8"
-features = ["groups", "bits", "hashing"]
-default-features = false
+version = "0.8.15"
 
 [dependencies.elliptic-curve]
 version = "0.13"
