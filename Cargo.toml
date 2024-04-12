@@ -58,7 +58,7 @@ optional = true
 [dev-dependencies]
 criterion = "0.3"
 csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
-vsss-rs = "3.3.4"
+vsss-rs = "4.0.1"
 serde_json = "1.0"
 serde_bare = "0.5"
 
