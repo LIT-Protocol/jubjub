@@ -3,13 +3,14 @@ authors = [
     "Sean Bowe <ewillbefull@gmail.com>",
     "Eirik Ogilvie-Wigley <eowigley@gmail.com>",
     "Jack Grigg <thestr4d@gmail.com>",
+    "Michael Lodder <redmike7@gmail.com>",
 ]
 description = "Implementation of the Jubjub elliptic curve group"
 documentation = "https://docs.rs/jubjub/"
 homepage = "https://github.com/zkcrypto/jubjub"
 license = "MIT/Apache-2.0"
-name = "jubjub"
-repository = "https://github.com/zkcrypto/jubjub"
+name = "jubjub-plus"
+repository = "https://github.com/LIT-Protocol/jubjub"
 version = "0.10.4"
 edition = "2021"
 
