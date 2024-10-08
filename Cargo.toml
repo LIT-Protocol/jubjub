@@ -11,7 +11,7 @@ homepage = "https://github.com/zkcrypto/jubjub"
 license = "MIT/Apache-2.0"
 name = "jubjub-plus"
 repository = "https://github.com/LIT-Protocol/jubjub"
-version = "0.10.4"
+version = "0.10.5"
 edition = "2021"
 
 [dependencies.serde]
@@ -24,7 +24,7 @@ version = "1"
 default-features = false
 
 [dependencies.bls12_381_plus]
-version = "0.8.15"
+version = "0.8.18"
 features = ["groups", "pairings"]
 default-features = false
 
@@ -45,7 +45,7 @@ version = "0.6"
 default-features = false
 
 [dependencies.subtle]
-version = "2.5.0"
+version = "2.6.0"
 default-features = false
 
 [dependencies.rand_chacha]
@@ -60,7 +60,7 @@ optional = true
 [dev-dependencies]
 criterion = "0.5"
 csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
-vsss-rs = "4.3"
+vsss-rs = "5.0.0-rc0"
 serde_json = "1.0"
 serde_bare = "0.5"
 
