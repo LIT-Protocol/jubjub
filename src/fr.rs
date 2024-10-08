@@ -865,6 +865,8 @@ impl Reduce<U512> for Fr {
     }
 }
 
+impl zeroize::DefaultIsZeroes for Fr {}
+
 #[test]
 fn test_constants() {
     assert_eq!(

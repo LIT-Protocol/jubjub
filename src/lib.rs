@@ -66,6 +66,7 @@ pub use fr::Fr;
 pub use bls12_381_plus;
 pub use ff;
 pub use group;
+use zeroize::DefaultIsZeroes;
 
 /// Represents an element of the base field $\mathbb{F}_q$ of the Jubjub elliptic curve
 /// construction.
@@ -256,7 +257,7 @@ impl From<ExtendedPoint> for AffinePoint {
 /// This is a pre-processed version of an affine point `(u, v)`
 /// in the form `(v + u, v - u, u * v * 2d)`. This can be added to an
 /// [`ExtendedPoint`](crate::ExtendedPoint).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Default, Copy, Debug)]
 pub struct AffineNielsPoint {
     v_plus_u: Fq,
     v_minus_u: Fq,
@@ -604,7 +605,7 @@ impl AffinePoint {
 
         items
             .into_iter()
-            .zip(denominators.into_iter())
+            .zip(denominators)
             .map(|(item, inv_denominator)| {
                 item.and_then(
                     |Item {
@@ -1488,6 +1489,14 @@ impl GroupEncoding for AffinePoint {
 impl_serde!(AffinePoint);
 impl_serde!(ExtendedPoint);
 impl_serde!(SubgroupPoint);
+
+impl DefaultIsZeroes for AffinePoint {}
+
+impl DefaultIsZeroes for AffineNielsPoint {}
+
+impl DefaultIsZeroes for ExtendedPoint {}
+
+impl DefaultIsZeroes for SubgroupPoint {}
 
 #[test]
 fn test_is_on_curve_var() {
