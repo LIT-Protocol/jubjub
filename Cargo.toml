@@ -63,6 +63,7 @@ version = "1.8"
 [dev-dependencies]
 criterion = "0.5"
 csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
+elliptic-curve-tools = "0.1.1"
 vsss-rs = "5.0.0-rc0"
 serde_json = "1.0"
 serde_bare = "0.5"

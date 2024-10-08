@@ -19,7 +19,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
 use ff::{FieldBits, PrimeFieldBits};
-
+use crate::SubgroupPoint;
 use crate::util::{adc, mac, sbb};
 
 /// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub elliptic
@@ -1324,4 +1324,20 @@ fn test_from_raw() {
     assert_eq!(Fr::from_raw(MODULUS.0), Fr::zero());
 
     assert_eq!(Fr::from_raw([1, 0, 0, 0]), R);
+}
+
+#[test]
+fn test_sum_of_products() {
+    use elliptic_curve_tools::SumOfProducts;
+    use elliptic_curve::Group;
+
+    let a = Fr::ONE + Fr::ONE;
+    let b = a + a;
+    let c = b + b;
+
+    let sop = SubgroupPoint::sum_of_products(
+        &[(a, SubgroupPoint::generator()), (b, SubgroupPoint::generator()), (c, SubgroupPoint::generator())]
+    );
+
+    assert_eq!(sop, SubgroupPoint::generator() * Fr::from(8 + 4 + 2));
 }
