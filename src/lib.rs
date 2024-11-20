@@ -1176,6 +1176,12 @@ impl ConditionallySelectable for SubgroupPoint {
     }
 }
 
+impl ConstantTimeEq for SubgroupPoint {
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.0.ct_eq(&other.0)
+    }
+}
+
 impl SubgroupPoint {
     /// Constructs an AffinePoint given `u` and `v` without checking that the point is on
     /// the curve or in the prime-order subgroup.

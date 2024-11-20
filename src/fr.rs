@@ -19,7 +19,6 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
 use ff::{FieldBits, PrimeFieldBits};
-use crate::SubgroupPoint;
 use crate::util::{adc, mac, sbb};
 
 /// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub elliptic
@@ -866,6 +865,10 @@ impl Reduce<U512> for Fr {
 }
 
 impl zeroize::DefaultIsZeroes for Fr {}
+
+
+#[cfg(test)]
+use crate::SubgroupPoint;
 
 #[test]
 fn test_constants() {
