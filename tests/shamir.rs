@@ -1,6 +1,9 @@
 use ff::Field;
+use jubjub_plus::{Scalar, SubgroupPoint};
 use rand_core::{CryptoRng, RngCore, SeedableRng};
-use vsss_rs::FeldmanVerifierSet;
+use vsss_rs::{
+    DefaultShare, FeldmanVerifierSet, IdentifierPrimeField, ValueGroup, ValuePrimeField,
+};
 
 struct TestingRng(rand_xorshift::XorShiftRng);
 
@@ -34,12 +37,14 @@ impl CryptoRng for TestingRng {}
 
 #[test]
 fn test_feldman() {
+    type SecretShare = DefaultShare<IdentifierPrimeField<Scalar>, ValuePrimeField<Scalar>>;
+    type JubjubVerifier = ValueGroup<SubgroupPoint>;
+
     let mut rng = TestingRng::from_seed([3u8; 16]);
-    let secret_key = jubjub::Scalar::random(&mut rng);
-    let (shares, verifiers) = vsss_rs::feldman::split_secret::<jubjub::SubgroupPoint, u8, Vec<u8>>(
-        3, 4, secret_key, None, rng,
-    )
-    .unwrap();
+    let secret_key = IdentifierPrimeField(Scalar::random(&mut rng));
+    let (shares, verifiers) =
+        vsss_rs::feldman::split_secret::<SecretShare, JubjubVerifier>(3, 4, &secret_key, None, rng)
+            .unwrap();
     for share in &shares {
         println!("Share: {:?}", share);
         assert!(verifiers.verify_share(share).is_ok());

@@ -17,9 +17,9 @@ use ff::{Field, PrimeField};
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
+use crate::util::{adc, mac, sbb};
 #[cfg(feature = "bits")]
 use ff::{FieldBits, PrimeFieldBits};
-use crate::util::{adc, mac, sbb};
 
 /// Represents an element of the scalar field $\mathbb{F}_r$ of the Jubjub elliptic
 /// curve construction.
@@ -866,7 +866,6 @@ impl Reduce<U512> for Fr {
 
 impl zeroize::DefaultIsZeroes for Fr {}
 
-
 #[cfg(test)]
 use crate::SubgroupPoint;
 
@@ -1331,16 +1330,18 @@ fn test_from_raw() {
 
 #[test]
 fn test_sum_of_products() {
-    use elliptic_curve_tools::SumOfProducts;
     use elliptic_curve::Group;
+    use elliptic_curve_tools::SumOfProducts;
 
     let a = Fr::ONE + Fr::ONE;
     let b = a + a;
     let c = b + b;
 
-    let sop = SubgroupPoint::sum_of_products(
-        &[(a, SubgroupPoint::generator()), (b, SubgroupPoint::generator()), (c, SubgroupPoint::generator())]
-    );
+    let sop = SubgroupPoint::sum_of_products(&[
+        (a, SubgroupPoint::generator()),
+        (b, SubgroupPoint::generator()),
+        (c, SubgroupPoint::generator()),
+    ]);
 
     assert_eq!(sop, SubgroupPoint::generator() * Fr::from(8 + 4 + 2));
 }

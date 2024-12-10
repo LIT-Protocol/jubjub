@@ -1,4 +1,4 @@
-use jubjub::*;
+use jubjub_plus::*;
 use rand_core::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
