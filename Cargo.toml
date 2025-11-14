@@ -11,7 +11,7 @@ homepage = "https://github.com/zkcrypto/jubjub"
 license = "MIT/Apache-2.0"
 name = "jubjub-plus"
 repository = "https://github.com/LIT-Protocol/jubjub"
-version = "0.10.8"
+version = "0.10.9"
 edition = "2021"
 
 [dependencies.serde]
@@ -61,12 +61,12 @@ optional = true
 version = "1.8"
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.7"
 elliptic-curve-tools = "0.1.1"
 rand_core = { version = "0.6.4", features = ["std"] }
 serde_json = "1.0"
 serde_bare = "0.5"
-vsss-rs = "5.0.0"
+vsss-rs = "5.1.0"
 
 [dev-dependencies.rand_xorshift]
 version = "0.3"

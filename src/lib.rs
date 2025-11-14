@@ -1183,7 +1183,32 @@ impl ConstantTimeEq for SubgroupPoint {
 }
 
 impl SubgroupPoint {
-    /// Constructs an AffinePoint given `u` and `v` without checking that the point is on
+    /// Constructs a SubgroupPoint given `u`, `v`, `t1`, and `t2` without checking that the point is on
+    /// the curve or in the prime-order subgroup.
+    ///
+    /// This should only be used for hard-coding constants (e.g. fixed generators); in all
+    /// other cases, use [`SubgroupPoint::from_bytes`] instead.
+    ///
+    /// [`SubgroupPoint::from_bytes`]: SubgroupPoint#impl-GroupEncoding
+    pub const fn new_unchecked(
+        u: [u64; 4],
+        v: [u64; 4],
+        z: [u64; 4],
+        t1: [u64; 4],
+        t2: [u64; 4],
+    ) -> Self {
+        #[allow(dead_code)]
+        struct InnerFq([u64; 4]);
+        Self(ExtendedPoint {
+            u: unsafe { core::mem::transmute(InnerFq(u)) },
+            v: unsafe { core::mem::transmute(InnerFq(v)) },
+            z: unsafe { core::mem::transmute(InnerFq(z)) },
+            t1: unsafe { core::mem::transmute(InnerFq(t1)) },
+            t2: unsafe { core::mem::transmute(InnerFq(t2)) },
+        })
+    }
+
+    /// Constructs from an AffinePoint given `u` and `v` without checking that the point is on
     /// the curve or in the prime-order subgroup.
     ///
     /// This should only be used for hard-coding constants (e.g. fixed generators); in all
@@ -2019,4 +2044,47 @@ fn test_serde() {
     assert!(res.is_ok());
     let public2 = res.unwrap();
     assert_eq!(public, public2);
+}
+
+#[test]
+fn redjubjub_generator() {
+    let jubjub_sig = SubgroupPoint::new_unchecked(
+        [
+            0x9fea675eb63e8cf6,
+            0x15ba8508eb7f13c5,
+            0x87a02da79c8b7ef8,
+            0xaf4897169c1851e,
+        ],
+        [
+            0xfb63146264e65a56,
+            0x77f3f8c6fd45d5e5,
+            0x8770a243986a6eb9,
+            0x6dde055ca112d037,
+        ],
+        [
+            0x00000001fffffffe,
+            0x5884b7fa00034802,
+            0x998c4fefecbc4ff5,
+            0x1824b159acc5056f,
+        ],
+        [
+            0x9fea675eb63e8cf6,
+            0x15ba8508eb7f13c5,
+            0x87a02da79c8b7ef8,
+            0x0af4897169c1851e,
+        ],
+        [
+            0xfb63146264e65a56,
+            0x77f3f8c6fd45d5e5,
+            0x8770a243986a6eb9,
+            0x6dde055ca112d037,
+        ],
+    );
+    assert_eq!(
+        jubjub_sig.to_bytes().as_ref(),
+        &[
+            48, 181, 242, 170, 173, 50, 86, 48, 188, 221, 219, 206, 77, 103, 101, 109, 5, 253, 28,
+            194, 208, 55, 187, 83, 117, 182, 233, 109, 158, 1, 161, 215,
+        ]
+    );
 }

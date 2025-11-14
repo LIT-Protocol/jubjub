@@ -1,7 +1,7 @@
 mod common;
 
-use ff::Field;
 use common::{new_rng, MyRandom, NUM_BLACK_BOX_CHECKS};
+use ff::Field;
 use jubjub_plus::*;
 
 #[test]
