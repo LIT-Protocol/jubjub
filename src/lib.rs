@@ -43,9 +43,9 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use elliptic_curve::hash2curve::Expander;
 use ff::{BatchInverter, Field};
 use group::{
+    Curve, Group, GroupEncoding,
     cofactor::{CofactorCurve, CofactorCurveAffine, CofactorGroup},
     prime::PrimeGroup,
-    Curve, Group, GroupEncoding,
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -1309,7 +1309,7 @@ impl Group for ExtendedPoint {
     fn random(mut rng: impl RngCore) -> Self {
         loop {
             let v = Fq::random(&mut rng);
-            let flip_sign = rng.next_u32() % 2 != 0;
+            let flip_sign = !rng.next_u32().is_multiple_of(2);
 
             // See AffinePoint::from_bytes for details.
             let v2 = v.square();
@@ -1342,7 +1342,6 @@ impl Group for ExtendedPoint {
         self.is_identity()
     }
 
-    #[must_use]
     fn double(&self) -> Self {
         self.double()
     }
@@ -1373,7 +1372,6 @@ impl Group for SubgroupPoint {
         self.0.is_identity()
     }
 
-    #[must_use]
     fn double(&self) -> Self {
         SubgroupPoint(self.0.double())
     }
@@ -1881,8 +1879,8 @@ fn test_mul_consistency() {
 
 #[test]
 fn test_serialization_consistency() {
-    let gen = FULL_GENERATOR.mul_by_cofactor();
-    let mut p = gen;
+    let r#gen = FULL_GENERATOR.mul_by_cofactor();
+    let mut p = r#gen;
 
     let v = vec![
         [
@@ -1961,7 +1959,7 @@ fn test_serialization_consistency() {
         assert_eq!(affine, deserialized);
         assert_eq!(affine, batch_deserialized.unwrap());
         assert_eq!(expected_serialized, serialized);
-        p += gen;
+        p += r#gen;
     }
 }
 

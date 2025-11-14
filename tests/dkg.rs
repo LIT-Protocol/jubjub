@@ -1,7 +1,7 @@
 use ff::Field;
 use group::Group;
 use jubjub_plus::Scalar;
-use vsss_rs::{shamir, DefaultShare, IdentifierPrimeField, ReadableShareSet, ValuePrimeField};
+use vsss_rs::{DefaultShare, IdentifierPrimeField, ReadableShareSet, ValuePrimeField, shamir};
 
 #[test]
 fn dkg_and_refresh() {

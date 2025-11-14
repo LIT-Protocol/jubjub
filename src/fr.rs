@@ -708,12 +708,10 @@ impl Field for Fr {
         Self::from_bytes_wide(&buf)
     }
 
-    #[must_use]
     fn square(&self) -> Self {
         self.square()
     }
 
-    #[must_use]
     fn double(&self) -> Self {
         self.double()
     }
@@ -1077,7 +1075,9 @@ fn test_from_u512_max() {
     let max_u64 = 0xffff_ffff_ffff_ffff;
     assert_eq!(
         R3 - R,
-        Fr::from_u512([max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64])
+        Fr::from_u512([
+            max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64, max_u64
+        ])
     );
 }
 
