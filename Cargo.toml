@@ -12,7 +12,7 @@ license = "MIT/Apache-2.0"
 name = "jubjub-plus"
 repository = "https://github.com/LIT-Protocol/jubjub"
 version = "0.10.9"
-edition = "2021"
+edition = "2024"
 
 [dependencies.serde]
 version = "1.0"
