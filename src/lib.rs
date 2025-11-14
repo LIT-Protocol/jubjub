@@ -1309,7 +1309,7 @@ impl Group for ExtendedPoint {
     fn random(mut rng: impl RngCore) -> Self {
         loop {
             let v = Fq::random(&mut rng);
-            let flip_sign = !rng.next_u32().is_multiple_of(2);
+            let flip_sign = rng.next_u32() & 1 == 1;
 
             // See AffinePoint::from_bytes for details.
             let v2 = v.square();
